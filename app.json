@@ -2,6 +2,7 @@
   "expo": {
     "name": "map-images-app",
     "slug": "map-images-app",
+    "scheme": "mapimagesapp",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -20,6 +21,15 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Приложению нужен доступ к галерее, чтобы прикреплять изображения к маркерам."
+        }
+      ]
+    ]
   }
 }
