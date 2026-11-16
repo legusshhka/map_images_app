@@ -1,18 +1,18 @@
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { MarkersProvider } from "../context/MarkersContext";
+import { DatabaseProvider } from "../contexts/DatabaseContext";
 
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
-      <MarkersProvider>
+      <DatabaseProvider>
         <Stack>
           <Stack.Screen name="index" options={{ title: "Карта" }} />
           <Stack.Screen name="marker/[id]" options={{ title: "Маркер" }} />
         </Stack>
         <StatusBar style="auto" />
-      </MarkersProvider>
+      </DatabaseProvider>
     </SafeAreaProvider>
   );
 }

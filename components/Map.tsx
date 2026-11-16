@@ -1,27 +1,46 @@
-// components/Map.tsx
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { StyleSheet, View, Text, Alert, TouchableOpacity } from "react-native";
 import MapView, { Marker, LongPressEvent } from "react-native-maps";
-import { useRouter } from "expo-router";
-import { useMarkers } from "../context/MarkersContext";
+import { useRouter, useFocusEffect } from "expo-router";
+import { useDatabase } from "../contexts/DatabaseContext";
+import { Marker as DbMarker } from "../database/operations";
 
 const MAP_LOAD_TIMEOUT_MS = 8000;
 
 export default function Map() {
-  const { markers, addMarker } = useMarkers();
+  const { addMarker, getMarkers, isLoading, error } = useDatabase();
   const router = useRouter();
+  const [markers, setMarkers] = useState<DbMarker[]>([]);
   const [mapReady, setMapReady] = useState(false);
   const [mapFailed, setMapFailed] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const loadMarkers = useCallback(async () => {
+    try {
+      const data = await getMarkers();
+      setMarkers(data);
+    } catch (e) {
+      Alert.alert("Ошибка", "Не удалось загрузить маркеры");
+      console.error(e);
+    }
+  }, [getMarkers]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!isLoading && !error) {
+        loadMarkers();
+      }
+    }, [isLoading, error, loadMarkers]),
+  );
+
   useEffect(() => {
     setMapReady(false);
     setMapFailed(false);
-    timeoutRef.current = setTimeout(() => {
-      setMapFailed(true);
-    }, MAP_LOAD_TIMEOUT_MS);
-
+    timeoutRef.current = setTimeout(
+      () => setMapFailed(true),
+      MAP_LOAD_TIMEOUT_MS,
+    );
     return () => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
@@ -33,16 +52,18 @@ export default function Map() {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
   };
 
-  const handleLongPress = (event: LongPressEvent) => {
+  const handleLongPress = async (event: LongPressEvent) => {
     try {
       const { latitude, longitude } = event.nativeEvent.coordinate;
-      addMarker({ latitude, longitude });
-    } catch (err) {
+      const newId = await addMarker(latitude, longitude);
+      await loadMarkers();
+      console.log("[Map] added marker id", newId);
+    } catch {
       Alert.alert("Ошибка", "Не удалось добавить маркер");
     }
   };
 
-  const handleMarkerPress = (markerId: string) => {
+  const handleMarkerPress = (markerId: number) => {
     try {
       router.push(`/marker/${markerId}`);
     } catch {
@@ -69,8 +90,11 @@ export default function Map() {
         {markers.map((marker) => (
           <Marker
             key={marker.id}
-            coordinate={marker.coordinate}
-            title={marker.title}
+            coordinate={{
+              latitude: marker.latitude,
+              longitude: marker.longitude,
+            }}
+            title={`Маркер #${marker.id}`}
             onPress={() => handleMarkerPress(marker.id)}
           />
         ))}

@@ -1,17 +1,47 @@
-import React from "react";
+import React, { useCallback, useState } from "react";
 import {
   View,
   Text,
   FlatList,
   TouchableOpacity,
   StyleSheet,
+  Alert,
 } from "react-native";
-import { useRouter } from "expo-router";
-import { useMarkers } from "../context/MarkersContext";
+import { useRouter, useFocusEffect } from "expo-router";
+import { useDatabase } from "../contexts/DatabaseContext";
+import { Marker as DbMarker } from "../database/operations";
 
 export default function MarkerList() {
-  const { markers } = useMarkers();
+  const { getMarkers, getMarkerImages, isLoading } = useDatabase();
   const router = useRouter();
+  const [markers, setMarkers] = useState<DbMarker[]>([]);
+  const [imageCounts, setImageCounts] = useState<Record<number, number>>({});
+
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      (async () => {
+        if (isLoading) return;
+        try {
+          const data = await getMarkers();
+          if (!active) return;
+          setMarkers(data);
+          const counts: Record<number, number> = {};
+          for (const m of data) {
+            const imgs = await getMarkerImages(m.id);
+            counts[m.id] = imgs.length;
+          }
+          if (active) setImageCounts(counts);
+        } catch {
+          if (active)
+            Alert.alert("Ошибка", "Не удалось загрузить список маркеров");
+        }
+      })();
+      return () => {
+        active = false;
+      };
+    }, [getMarkers, getMarkerImages, isLoading]),
+  );
 
   if (markers.length === 0) {
     return (
@@ -27,7 +57,7 @@ export default function MarkerList() {
     <View style={styles.container}>
       <FlatList
         data={markers}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => String(item.id)}
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
@@ -37,14 +67,13 @@ export default function MarkerList() {
             onPress={() => router.push(`/marker/${item.id}`)}
           >
             <Text style={styles.cardTitle} numberOfLines={1}>
-              {item.title}
+              Маркер #{item.id}
             </Text>
             <Text style={styles.cardCoords}>
-              {item.coordinate.latitude.toFixed(4)},{" "}
-              {item.coordinate.longitude.toFixed(4)}
+              {item.latitude.toFixed(4)}, {item.longitude.toFixed(4)}
             </Text>
             <Text style={styles.cardImages}>
-              Изображений: {item.images.length}
+              Изображений: {imageCounts[item.id] ?? 0}
             </Text>
           </TouchableOpacity>
         )}
@@ -54,9 +83,7 @@ export default function MarkerList() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    paddingBottom: 12,
-  },
+  container: { paddingBottom: 12 },
   listContent: { paddingHorizontal: 12 },
   card: {
     backgroundColor: "#fff",

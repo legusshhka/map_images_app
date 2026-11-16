@@ -1,16 +1,13 @@
 export interface ImageData {
-  id: string;
+  id: number;
   uri: string;
 }
 
 export interface MarkerData {
-  id: string;
-  coordinate: {
-    latitude: number;
-    longitude: number;
-  };
-  title: string;
-  images: ImageData[];
+  id: number;
+  latitude: number;
+  longitude: number;
+  createdAt: string;
 }
 
 export type MarkerDetailsParams = {

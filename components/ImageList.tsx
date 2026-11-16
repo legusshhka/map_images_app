@@ -1,4 +1,3 @@
-// components/ImageList.tsx
 import React, { useState } from "react";
 import {
   View,
@@ -15,8 +14,8 @@ import { ImageData } from "../types";
 
 interface ImageListProps {
   images: ImageData[];
-  onAddImage: (uri: string) => void;
-  onRemoveImage: (imageId: string) => void;
+  onAddImage: (uri: string) => Promise<void> | void;
+  onRemoveImage: (imageId: number) => Promise<void> | void;
 }
 
 export default function ImageList({
@@ -29,28 +28,21 @@ export default function ImageList({
   const pickImage = async () => {
     try {
       setLoading(true);
-
       const permission =
         await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
-        Alert.alert(
-          "Нет доступа",
-          "Разрешите доступ к галерее в настройках, чтобы добавлять изображения.",
-        );
+        Alert.alert("Нет доступа", "Разрешите доступ к галерее в настройках.");
         return;
       }
-
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ["images"],
         allowsMultipleSelection: true,
         quality: 0.8,
       });
-
       if (result.canceled) return;
-
-      result.assets.forEach((asset) => {
-        if (asset.uri) onAddImage(asset.uri);
-      });
+      for (const asset of result.assets) {
+        if (asset.uri) await onAddImage(asset.uri);
+      }
     } catch (err) {
       Alert.alert("Ошибка", "Не удалось выбрать изображение");
       console.error(err);
@@ -59,7 +51,7 @@ export default function ImageList({
     }
   };
 
-  const confirmRemove = (imageId: string) => {
+  const confirmRemove = (imageId: number) => {
     Alert.alert("Удалить изображение?", "Действие нельзя отменить", [
       { text: "Отмена", style: "cancel" },
       {
@@ -92,7 +84,7 @@ export default function ImageList({
       ) : (
         <FlatList
           data={images}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => String(item.id)}
           numColumns={3}
           scrollEnabled={false}
           renderItem={({ item }) => (
